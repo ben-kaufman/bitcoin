@@ -1220,7 +1220,7 @@ public:
     std::set<ScriptPubKeyMan*> GetAllScriptPubKeyMans() const;
 
     //! Get the ScriptPubKeyMan for the given OutputType and internal/external chain.
-    ScriptPubKeyMan* GetScriptPubKeyMan(const OutputType& type, bool internal) const;
+    ScriptPubKeyMan* GetScriptPubKeyMan(const OutputType& type, bool internal, bool logIfNotFound) const;
 
     //! Get the ScriptPubKeyMan for a script
     ScriptPubKeyMan* GetScriptPubKeyMan(const CScript& script) const;

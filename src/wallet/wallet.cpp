@@ -1465,7 +1465,7 @@ bool CWallet::CanGetAddresses(bool internal) const
     LOCK(cs_wallet);
     if (m_spk_managers.empty()) return false;
     for (OutputType t : OUTPUT_TYPES) {
-        auto spk_man = GetScriptPubKeyMan(t, internal);
+        auto spk_man = GetScriptPubKeyMan(t, internal, false);
         if (spk_man && spk_man->CanGetAddresses(internal)) {
             return true;
         }
@@ -3355,7 +3355,7 @@ bool CWallet::GetNewDestination(const OutputType type, const std::string label, 
     LOCK(cs_wallet);
     error.clear();
     bool result = false;
-    auto spk_man = GetScriptPubKeyMan(type, false /* internal */);
+    auto spk_man = GetScriptPubKeyMan(type, false /* internal */, true);
     if (spk_man) {
         spk_man->TopUp();
         result = spk_man->GetNewDestination(type, dest, error);
@@ -3556,7 +3556,7 @@ std::set<CTxDestination> CWallet::GetLabelAddresses(const std::string& label) co
 
 bool ReserveDestination::GetReservedDestination(CTxDestination& dest, bool internal)
 {
-    m_spk_man = pwallet->GetScriptPubKeyMan(type, internal);
+    m_spk_man = pwallet->GetScriptPubKeyMan(type, internal, true);
     if (!m_spk_man) {
         return false;
     }
@@ -4371,7 +4371,7 @@ std::set<ScriptPubKeyMan*> CWallet::GetActiveScriptPubKeyMans() const
     std::set<ScriptPubKeyMan*> spk_mans;
     for (bool internal : {false, true}) {
         for (OutputType t : OUTPUT_TYPES) {
-            auto spk_man = GetScriptPubKeyMan(t, internal);
+            auto spk_man = GetScriptPubKeyMan(t, internal, false);
             if (spk_man) {
                 spk_mans.insert(spk_man);
             }
@@ -4389,12 +4389,14 @@ std::set<ScriptPubKeyMan*> CWallet::GetAllScriptPubKeyMans() const
     return spk_mans;
 }
 
-ScriptPubKeyMan* CWallet::GetScriptPubKeyMan(const OutputType& type, bool internal) const
+ScriptPubKeyMan* CWallet::GetScriptPubKeyMan(const OutputType& type, bool internal, bool logIfNotFound) const
 {
     const std::map<OutputType, ScriptPubKeyMan*>& spk_managers = internal ? m_internal_spk_managers : m_external_spk_managers;
     std::map<OutputType, ScriptPubKeyMan*>::const_iterator it = spk_managers.find(type);
     if (it == spk_managers.end()) {
-        WalletLogPrintf("%s scriptPubKey Manager for output type %d does not exist\n", internal ? "Internal" : "External", static_cast<int>(type));
+        if (logIfNotFound) {
+            WalletLogPrintf("%s scriptPubKey Manager for output type %d does not exist\n", internal ? "Internal" : "External", static_cast<int>(type));
+        }
         return nullptr;
     }
     return it->second;
@@ -4643,7 +4645,7 @@ ScriptPubKeyMan* CWallet::AddWalletDescriptor(WalletDescriptor& desc, const Flat
         auto old_spk_man_id = old_spk_man->GetID();
         for (bool internal : {false, true}) {
             for (OutputType t : OUTPUT_TYPES) {
-                auto active_spk_man = GetScriptPubKeyMan(t, internal);
+                auto active_spk_man = GetScriptPubKeyMan(t, internal, false);
                 if (active_spk_man && active_spk_man->GetID() == old_spk_man_id) {
                     if (internal) {
                         m_internal_spk_managers.erase(t);
